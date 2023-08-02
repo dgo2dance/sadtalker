@@ -37,17 +37,6 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           logout: true
-
-      - name: Get repo name
-        id: repo_name
-        run: echo "::set-output name=repo::$(echo ${{ github.repository }} | cut -d'/' -f2)"
-      
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ steps.repo_name.outputs.repo }}
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v4

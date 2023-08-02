@@ -24,7 +24,8 @@ RUN git clone https://github.com/Winfredy/SadTalker.git && \
     loguru && \
     rm -rf /root/.cache/pip/*  # 清除pip缓存
 
-RUN pip install httpcore==0.15
+RUN pip install httpcore==0.15 && \
+    pip install esdk-obs-python
 
 WORKDIR /home/SadTalker
 

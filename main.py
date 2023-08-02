@@ -10,12 +10,15 @@ from src.facerender.animate_onnx import AnimateFromCoeff
 from src.generate_batch import get_data
 from src.generate_facerender_batch import get_facerender_data
 from src.utils.init_path import init_path
+from obs import ObsClient
+from datetime import datetime
 
 import requests
 import json
 import os, sys
 import base64
 import os
+import shutil
 
 tts_service = os.getenv("TTS_SERVER")
 pic_path ="./sadtalker_default.jpeg"
@@ -30,6 +33,10 @@ app = FastAPI()
 
 class Words(BaseModel):
     words: str
+
+def cleanup(save_dir):
+    if os.path.exists(save_dir) and os.path.isdir(save_dir):
+        shutil.rmtree(save_dir)
 
 
 @app.post("/pipeline")
@@ -73,19 +80,39 @@ async def predict_image(items:Words):
     video_path = animate_from_coeff.generate_deploy(data, save_dir, pic_path, crop_info, \
                                 enhancer="gfpgan", background_enhancer=None, preprocess="full")
     end_time = time()
-    logger.error(f"time: {end_time-start_time}")
-    response = {
-        "video_path": video_path
-    }
-    # Returns the video content in base64, disabled. Use mount to host to return video address
-    # with open(video_path, "rb") as file:
-    #         # b64 encode
-    #         video_data = base64.b64encode(file.read()).decode("utf-8")
-        
-    #    
-    # response = {
-    #         "video_base64": video_data
-    #     }
+    logger.debug(f"time: {end_time-start_time}")
+    
+    # 开始上传
+    obsClient = ObsClient(
+    access_key_id = "A0ZVIFU3QR3LQ0EW1DAX",
+    secret_access_key = "APfzydGLR0fDn1vecAlXmD8irMDjLblEUvXGxPDc",
+    server = "obs.cn-north-4.myhuaweicloud.com",
+    )
+
+    now = datetime.now()  # 获取当前的日期和时间
+    objectKey = 'virtualMan/' + now.strftime('%m%d%H%M') + '.mp4'
+
+    resp = obsClient.putFile(
+        bucketName = "mutivod",
+        objectKey = objectKey,
+        file_path = video_path)
+
+    if resp.status < 300:
+        # 输出请求Id
+        logger.info('URL:', resp.body.objectUrl)
+        response = {
+            "video_url": resp.body.objectUrl,
+            "code": "000"
+        }
+    else:
+        logger.info("upload fail")
+        response = {
+            "video_url": "",
+            "code": "001"
+        }
+
+    obsClient.close()
+    cleanup(save_dir)
         
     return response
     
